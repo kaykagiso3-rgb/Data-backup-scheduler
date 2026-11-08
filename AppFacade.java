@@ -1,6 +1,9 @@
 package group.pkg22_project;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class AppFacade {
@@ -30,6 +33,25 @@ public class AppFacade {
     public void addJob(BackupJob job) {
         store.add(job);
         store.save();
+
+        try {
+            Path source = Path.of(job.getSourcePath());
+            Files.createDirectories(source);
+
+            Path sample = source.resolve("sample_document.txt");
+            if (!Files.exists(sample)) {
+                String text = "Sample Document\n==============\n"
+                        + "This file was created automatically when the job was added.\n"
+                        + "Job Name : " + job.getName() + "\n"
+                        + "Source   : " + job.getSourcePath() + "\n"
+                        + "Created  : " + LocalDateTime.now() + "\n\n";
+                Files.writeString(sample, text);
+                logger.info("sample document created for job " + job.getJobId());
+            }
+        } catch (IOException e) {
+            logger.error("could not create sample file: " + e.getMessage());
+        }
+
         logger.info("added job " + job.getJobId());
     }
 
@@ -74,11 +96,14 @@ public class AppFacade {
         return engine.listVersionIds(job);
     }
 
-    public void restore(String jobId, String versionId, Path target) {
+    public boolean restore(String jobId, String versionId, Path target) {
         BackupJob job = store.find(jobId);
-        if (job != null) {
-            restore.restore(job, versionId, target);
+        if (job == null) {
+            logger.error("restore failed: unknown job " + jobId);
+            return false;
         }
+        restore.restore(job, versionId, target);
+        return true;
     }
 
     public List<String> getRecentLog() {
