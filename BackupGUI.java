@@ -1,23 +1,10 @@
-
 package group.pkg22_project;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
+import java.awt.*;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
+import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
 public class BackupGUI {
@@ -37,13 +24,11 @@ public class BackupGUI {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setBackground(new Color(245, 245, 245));
 
-        // Title
         JLabel title = new JLabel("Data Backup Scheduler", JLabel.CENTER);
         title.setFont(new Font("Segoe UI", Font.BOLD, 18));
         title.setBorder(new EmptyBorder(12, 0, 8, 0));
         title.setForeground(new Color(40, 40, 40));
 
-        // Button panel
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 8));
         buttons.setBackground(new Color(245, 245, 245));
         buttons.setBorder(new EmptyBorder(4, 8, 8, 8));
@@ -58,16 +43,11 @@ public class BackupGUI {
         JButton enableBtn = createButton("Enable");
         JButton disableBtn = createButton("Disable");
 
-        buttons.add(listBtn);
-        buttons.add(addBtn);
-        buttons.add(backupBtn);
-        buttons.add(versionsBtn);
-        buttons.add(restoreBtn);
+        buttons.add(listBtn); buttons.add(addBtn); buttons.add(backupBtn);
+        buttons.add(versionsBtn); buttons.add(restoreBtn);
         buttons.add(Box.createHorizontalStrut(12));
-        buttons.add(logBtn);
-        buttons.add(deleteBtn);
-        buttons.add(enableBtn);
-        buttons.add(disableBtn);
+        buttons.add(logBtn); buttons.add(deleteBtn);
+        buttons.add(enableBtn); buttons.add(disableBtn);
 
         listBtn.addActionListener(e -> listJobs());
         addBtn.addActionListener(e -> addJob());
@@ -79,7 +59,6 @@ public class BackupGUI {
         enableBtn.addActionListener(e -> setEnabled(true));
         disableBtn.addActionListener(e -> setEnabled(false));
 
-        // Output area
         JScrollPane scroll = new JScrollPane(output);
         scroll.setBorder(BorderFactory.createCompoundBorder(
                 new EmptyBorder(0, 12, 12, 12),
@@ -88,17 +67,13 @@ public class BackupGUI {
         frame.add(title, BorderLayout.NORTH);
         frame.add(buttons, BorderLayout.CENTER);
         frame.add(scroll, BorderLayout.SOUTH);
-
         frame.setMinimumSize(new Dimension(820, 520));
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
 
         frame.addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-            public void windowClosing(java.awt.event.WindowEvent e) {
-                app.shutdown();
-            }
+            @Override public void windowClosing(java.awt.event.WindowEvent e) { app.shutdown(); }
         });
     }
 
@@ -113,10 +88,7 @@ public class BackupGUI {
     private void listJobs() {
         output.setText("");
         List<BackupJob> jobs = app.listJobs();
-        if (jobs.isEmpty()) {
-            output.append("No jobs yet.\n");
-            return;
-        }
+        if (jobs.isEmpty()) { output.append("No jobs yet.\n"); return; }
         for (BackupJob job : jobs) {
             output.append("ID:        " + job.getJobId() + "\n");
             output.append("Name:      " + job.getName() + "\n");
@@ -138,8 +110,7 @@ public class BackupGUI {
         try {
             int interval = Integer.parseInt(intervalText.trim());
             int keep = Integer.parseInt(keepText.trim());
-            BackupJob job = new BackupJob(
-                    UUID.randomUUID().toString().substring(0, 8),
+            BackupJob job = new BackupJob(UUID.randomUUID().toString().substring(0, 8),
                     name.trim(), source.trim(), dest.trim(), interval, keep);
             app.addJob(job);
             listJobs();
@@ -152,11 +123,8 @@ public class BackupGUI {
         String id = JOptionPane.showInputDialog(null, "Job id to back up:");
         if (id == null) return;
         BackupVersion result = app.backupNow(id.trim());
-        if (result == null) {
-            JOptionPane.showMessageDialog(null, "Unknown job.");
-        } else {
-            output.append(result.getDetails() + "\n");
-        }
+        if (result == null) JOptionPane.showMessageDialog(null, "Unknown job.");
+        else output.append(result.getDetails() + "\n");
     }
 
     private void listVersions() {
@@ -167,43 +135,32 @@ public class BackupGUI {
 
     private void restoreJob() {
         String id = JOptionPane.showInputDialog(null, "Job id:");
-        if (id == null) return;
+        if (id == null || id.isBlank()) return;
+        if (app.listJobs().stream().noneMatch(j -> j.getJobId().equals(id.trim()))) {
+            JOptionPane.showMessageDialog(null, "Job ID '" + id + "' does not exist.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         String version = JOptionPane.showInputDialog(null, "Version id:");
         String target = JOptionPane.showInputDialog(null, "Target folder:", "restore");
         if (version == null || target == null) return;
-        app.restore(id.trim(), version.trim(), Path.of(target.trim()));
-        output.append("Restore requested for " + version + "\n");
+        boolean ok = app.restore(id.trim(), version.trim(), Path.of(target.trim()));
+        output.append(ok ? "Restore completed for version " + version + "\n" : "Restore failed.\n");
         showLog();
     }
 
     private void showLog() {
         output.setText("");
-        for (String line : app.getRecentLog()) {
-            output.append(line + "\n");
-        }
+        for (String line : app.getRecentLog()) output.append(line + "\n");
     }
 
     private void deleteJob() {
         String id = JOptionPane.showInputDialog(null, "Job id to delete:");
         if (id == null || id.isBlank()) return;
-
-        int choice = JOptionPane.showConfirmDialog(
-                null,
-                "Delete job " + id + "?\nThis cannot be undone.",
-                "Confirm delete",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE);
-
-        if (choice != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        if (app.deleteJob(id.trim())) {
-            output.append("Deleted job " + id + "\n");
-            listJobs();
-        } else {
-            JOptionPane.showMessageDialog(null, "Unknown job.");
-        }
+        int choice = JOptionPane.showConfirmDialog(null, "Delete job " + id + "?\nThis cannot be undone.",
+                "Confirm delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (choice != JOptionPane.YES_OPTION) return;
+        if (app.deleteJob(id.trim())) { output.append("Deleted job " + id + "\n"); listJobs(); }
+        else JOptionPane.showMessageDialog(null, "Unknown job.");
     }
 
     private void setEnabled(boolean enabled) {
@@ -212,8 +169,6 @@ public class BackupGUI {
         if (app.setJobEnabled(id.trim(), enabled)) {
             output.append((enabled ? "Enabled" : "Disabled") + " job " + id + "\n");
             listJobs();
-        } else {
-            JOptionPane.showMessageDialog(null, "Unknown job.");
-        }
+        } else JOptionPane.showMessageDialog(null, "Unknown job.");
     }
 }
