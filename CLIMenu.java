@@ -1,4 +1,3 @@
-
 package group.pkg22_project;
 
 import java.nio.file.Path;
@@ -37,10 +36,7 @@ public class CLIMenu {
                 case "4" -> listVersions();
                 case "5" -> restoreJob();
                 case "6" -> showLog();
-                case "7" -> {
-                    app.shutdown();
-                    running = false;
-                }
+                case "7" -> { app.shutdown(); running = false; }
                 case "8" -> deleteJob();
                 case "9" -> setEnabled(true);
                 case "10" -> setEnabled(false);
@@ -51,10 +47,7 @@ public class CLIMenu {
 
     private void listJobs() {
         List<BackupJob> jobs = app.listJobs();
-        if (jobs.isEmpty()) {
-            System.out.println("No jobs yet.");
-            return;
-        }
+        if (jobs.isEmpty()) { System.out.println("No jobs yet."); return; }
         for (BackupJob job : jobs) {
             System.out.println("ID:        " + job.getJobId());
             System.out.println("Name:      " + job.getName());
@@ -77,9 +70,7 @@ public class CLIMenu {
         int interval = Integer.parseInt(in.nextLine().trim());
         System.out.print("Keep versions: ");
         int keep = Integer.parseInt(in.nextLine().trim());
-        BackupJob job = new BackupJob(
-                UUID.randomUUID().toString().substring(0, 8),
-                name, source, dest, interval, keep);
+        BackupJob job = new BackupJob(UUID.randomUUID().toString().substring(0, 8), name, source, dest, interval, keep);
         app.addJob(job);
         System.out.println("Created job " + job.getJobId());
     }
@@ -88,11 +79,7 @@ public class CLIMenu {
         System.out.print("Job id: ");
         String id = in.nextLine().trim();
         BackupVersion result = app.backupNow(id);
-        if (result == null) {
-            System.out.println("Unknown job.");
-        } else {
-            System.out.println(result.getDetails());
-        }
+        System.out.println(result == null ? "Unknown job." : result.getDetails());
     }
 
     private void listVersions() {
@@ -104,17 +91,20 @@ public class CLIMenu {
     private void restoreJob() {
         System.out.print("Job id: ");
         String id = in.nextLine().trim();
+        if (app.listJobs().stream().noneMatch(j -> j.getJobId().equals(id))) {
+            System.out.println("Error: Job ID '" + id + "' does not exist.");
+            return;
+        }
         System.out.print("Version id: ");
         String version = in.nextLine().trim();
         System.out.print("Target folder: ");
         String target = in.nextLine().trim();
-        app.restore(id, version, Path.of(target));
+        boolean ok = app.restore(id, version, Path.of(target));
+        if (!ok) System.out.println("Restore failed.");
     }
 
     private void showLog() {
-        for (String line : app.getRecentLog()) {
-            System.out.println(line);
-        }
+        for (String line : app.getRecentLog()) System.out.println(line);
     }
 
     private void deleteJob() {
@@ -126,20 +116,14 @@ public class CLIMenu {
             System.out.println("Delete cancelled.");
             return;
         }
-        if (app.deleteJob(id)) {
-            System.out.println("Deleted job " + id);
-        } else {
-            System.out.println("Unknown job.");
-        }
+        System.out.println(app.deleteJob(id) ? "Deleted job " + id : "Unknown job.");
     }
 
     private void setEnabled(boolean enabled) {
         System.out.print("Job id: ");
         String id = in.nextLine().trim();
-        if (app.setJobEnabled(id, enabled)) {
-            System.out.println((enabled ? "Enabled" : "Disabled") + " job " + id);
-        } else {
-            System.out.println("Unknown job.");
-        }
+        System.out.println(app.setJobEnabled(id, enabled)
+                ? ((enabled ? "Enabled" : "Disabled") + " job " + id)
+                : "Unknown job.");
     }
 }
